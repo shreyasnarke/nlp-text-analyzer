@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NLP Text Analyzer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 30px 20px; }
+    h1 { text-align: center; font-size: 2rem; margin-bottom: 6px; color: #38bdf8; }
+    .subtitle { text-align: center; color: #94a3b8; margin-bottom: 30px; font-size: 0.95rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    textarea { width: 100%; height: 130px; padding: 14px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 1rem; resize: vertical; outline: none; }
+    textarea:focus { border-color: #38bdf8; }
+    button { margin-top: 12px; width: 100%; padding: 13px; background: #38bdf8; color: #0f172a; font-size: 1rem; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #0ea5e9; }
+    #results { margin-top: 30px; display: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 18px; border: 1px solid #334155; }
+    .card h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-bottom: 12px; }
+    .stat-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
+    .stat-val { font-weight: 700; color: #f1f5f9; }
+    .sentiment-score { font-size: 2rem; font-weight: 800; text-align: center; margin: 8px 0; }
+    .positive { color: #4ade80; }
+    .negative { color: #f87171; }
+    .neutral { color: #facc15; }
+    .tag { display: inline-block; background: #0f172a; border: 1px solid #334155; border-radius: 20px; padding: 3px 10px; font-size: 0.8rem; margin: 3px; color: #94a3b8; }
+    .tag.highlight { border-color: #38bdf8; color: #38bdf8; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.85rem; }
+    .bar-bg { flex: 1; background: #0f172a; border-radius: 4px; height: 8px; }
+    .bar-fill { height: 8px; border-radius: 4px; background: #38bdf8; }
+    .stem-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 4px 0; border-bottom: 1px solid #1e293b; color: #94a3b8; }
+    .stem-row span:last-child { color: #f472b6; font-weight: 600; }
+    .loader { text-align: center; padding: 20px; color: #38bdf8; font-size: 1.1rem; display: none; }
+    .nlp-concepts { margin-top: 20px; background: #1e293b; border-radius: 12px; padding: 18px; border: 1px solid #334155; }
+    .nlp-concepts h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-bottom: 12px; }
+    .concept { margin-bottom: 10px; }
+    .concept strong { color: #f1f5f9; }
+    .concept p { color: #94a3b8; font-size: 0.85rem; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧠 NLP Text Analyzer</h1>
+    <p class="subtitle">Natural Language Processing — understand what your text means</p>
+
+    <textarea id="inputText" placeholder="Type or paste any text here... e.g. 'Elon Musk visited New York and said Tesla is an amazing company that loves innovation.'"></textarea>
+    <button onclick="analyze()">⚡ Analyze Text</button>
+
+    <div class="loader" id="loader">Analyzing... 🔍</div>
+    <div id="results">
+      <div class="grid">
+
+        <!-- Stats -->
+        <div class="card">
+          <h3>📊 Text Stats</h3>
+          <div class="stat-row"><span>Characters</span><span class="stat-val" id="chars">-</span></div>
+          <div class="stat-row"><span>Words</span><span class="stat-val" id="words">-</span></div>
+          <div class="stat-row"><span>Sentences</span><span class="stat-val" id="sentences">-</span></div>
+        </div>
+
+        <!-- Sentiment -->
+        <div class="card">
+          <h3>💬 Sentiment Analysis</h3>
+          <div class="sentiment-score" id="sentimentLabel">-</div>
+          <div class="stat-row"><span>Score</span><span class="stat-val" id="sentimentScore">-</span></div>
+          <div style="margin-top:8px">
+            <div style="font-size:0.8rem;color:#4ade80;margin-bottom:4px">Positive words: <span id="posWords"></span></div>
+            <div style="font-size:0.8rem;color:#f87171">Negative words: <span id="negWords"></span></div>
+          </div>
+        </div>
+
+        <!-- NER -->
+        <div class="card">
+          <h3>🏷️ Named Entities (NER)</h3>
+          <div style="margin-bottom:8px"><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">PEOPLE</div><div id="people"></div></div>
+          <div style="margin-bottom:8px"><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">PLACES</div><div id="places"></div></div>
+          <div><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">ORGANIZATIONS</div><div id="orgs"></div></div>
+        </div>
+
+        <!-- POS -->
+        <div class="card">
+          <h3>🔤 Parts of Speech</h3>
+          <div style="margin-bottom:8px"><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">NOUNS</div><div id="nouns"></div></div>
+          <div style="margin-bottom:8px"><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">VERBS</div><div id="verbs"></div></div>
+          <div><div style="font-size:0.75rem;color:#94a3b8;margin-bottom:4px">ADJECTIVES</div><div id="adjectives"></div></div>
+        </div>
+
+        <!-- Keywords -->
+        <div class="card">
+          <h3>🔑 Keywords (TF-IDF)</h3>
+          <div id="keywords"></div>
+        </div>
+
+        <!-- Top Words -->
+        <div class="card">
+          <h3>📈 Word Frequency</h3>
+          <div id="topWords"></div>
+        </div>
+
+      </div>
+
+      <!-- Stemming -->
+      <div class="nlp-concepts" style="margin-top:16px">
+        <h3>🌱 Stemming — words reduced to root form</h3>
+        <div id="stems"></div>
+      </div>
+
+      <!-- What is NLP -->
+      <div class="nlp-concepts">
+        <h3>📚 What is NLP? — Concepts used above</h3>
+        <div class="concept"><strong>Tokenization</strong><p>Splitting text into individual words or tokens.</p></div>
+        <div class="concept"><strong>Sentiment Analysis</strong><p>Detecting if text is positive, negative, or neutral.</p></div>
+        <div class="concept"><strong>Named Entity Recognition (NER)</strong><p>Identifying real-world entities like people, places, and organizations.</p></div>
+        <div class="concept"><strong>Part-of-Speech Tagging (POS)</strong><p>Labeling each word as noun, verb, adjective, etc.</p></div>
+        <div class="concept"><strong>TF-IDF (Keyword Extraction)</strong><p>Finding the most important/unique words in the text.</p></div>
+        <div class="concept"><strong>Stemming</strong><p>Reducing words to their base/root form (e.g. "running" → "run").</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function analyze() {
+      const text = document.getElementById("inputText").value.trim();
+      if (!text) return alert("Please enter some text!");
+
+      document.getElementById("loader").style.display = "block";
+      document.getElementById("results").style.display = "none";
+
+      const res = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+
+      document.getElementById("loader").style.display = "none";
+      document.getElementById("results").style.display = "block";
+
+      // Stats
+      document.getElementById("chars").textContent = data.stats.characters;
+      document.getElementById("words").textContent = data.stats.words;
+      document.getElementById("sentences").textContent = data.stats.sentences;
+
+      // Sentiment
+      const scoreEl = document.getElementById("sentimentLabel");
+      scoreEl.textContent = data.sentiment.label;
+      scoreEl.className = "sentiment-score " + (data.sentiment.score > 0 ? "positive" : data.sentiment.score < 0 ? "negative" : "neutral");
+      document.getElementById("sentimentScore").textContent = data.sentiment.score;
+      document.getElementById("posWords").textContent = data.sentiment.positive.join(", ") || "none";
+      document.getElementById("negWords").textContent = data.sentiment.negative.join(", ") || "none";
+
+      // NER
+      const tag = (w, h) => `<span class="tag ${h ? 'highlight' : ''}">${w}</span>`;
+      document.getElementById("people").innerHTML = data.namedEntities.people.map(w => tag(w, true)).join("") || tag("none");
+      document.getElementById("places").innerHTML = data.namedEntities.places.map(w => tag(w, true)).join("") || tag("none");
+      document.getElementById("orgs").innerHTML = data.namedEntities.organizations.map(w => tag(w, true)).join("") || tag("none");
+
+      // POS
+      document.getElementById("nouns").innerHTML = data.partsOfSpeech.nouns.slice(0,6).map(w => tag(w)).join("") || tag("none");
+      document.getElementById("verbs").innerHTML = data.partsOfSpeech.verbs.slice(0,6).map(w => tag(w)).join("") || tag("none");
+      document.getElementById("adjectives").innerHTML = data.partsOfSpeech.adjectives.slice(0,6).map(w => tag(w)).join("") || tag("none");
+
+      // Keywords
+      document.getElementById("keywords").innerHTML = data.keywords.map(w => tag(w, true)).join("") || tag("none");
+
+      // Top Words bar chart
+      const max = data.topWords[0]?.count || 1;
+      document.getElementById("topWords").innerHTML = data.topWords.map(({ word, count }) =>
+        `<div class="bar-row"><span style="width:80px;color:#e2e8f0">${word}</span>
+         <div class="bar-bg"><div class="bar-fill" style="width:${(count/max)*100}%"></div></div>
+         <span style="color:#94a3b8">${count}</span></div>`
+      ).join("");
+
+      // Stemming
+      document.getElementById("stems").innerHTML = data.stemming.map(({ word, stem }) =>
+        `<div class="stem-row"><span>${word}</span><span>→ ${stem}</span></div>`
+      ).join("");
+    }
+  </script>
+</body>
+</html>
