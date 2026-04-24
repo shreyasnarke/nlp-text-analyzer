@@ -24,3 +24,4 @@ Every word has a role. Every sentence has a feeling. Every paragraph tells a sto
 And now my app can understand all of that. 🚀
 If you're learning AI/ML — don't just watch videos.
 Build something small. You'll understand 10x more.
+<img width="1886" height="944" alt="Screenshot 2026-04-23 203336" src="https://github.com/user-attachments/assets/f1d2d596-cc9c-4551-87c4-55e663347d88" />
